@@ -20,7 +20,12 @@ namespace AccessPeople.Models
             public string access_token { get; set; }
             public int expires_in { get; set; }
         }
-         
+        public class DBmodel
+        {
+            public string client_id { get; set; }
+            public string client_secret { get; set; }
+        }
+
         public class FetchAssessmentResCls
         {
             public string Account_Name { get; set; }
@@ -43,6 +48,13 @@ namespace AccessPeople.Models
             public string UserCode { get; set; }
             public string Password { get; set; }
             public string AccountCode { get; set; }
+        } 
+        public class WebhookRes
+        {
+            public string Status { get; set; }
+            public string Message { get; set; }
+            public string MoreInfo { get; set; }
+            public string ErrorCode { get; set; }
         }
     }
 }

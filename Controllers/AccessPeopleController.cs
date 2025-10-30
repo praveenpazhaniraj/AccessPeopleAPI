@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,19 +14,21 @@ namespace AccessPeople.Controllers
     [Route("api/[controller]")]
     public class AssessPeopleController : ControllerBase
     {
-        private readonly AssessPeopleService _service;
+        private readonly AssessPeopleService obj;
 
-        public AssessPeopleController()
+        public AssessPeopleController(IConfiguration configuration)
         {
-            _service = new AssessPeopleService();
+            obj = new AssessPeopleService(configuration);
         }
 
         [HttpPost("GetToken")]
         public IActionResult GetToken()
         {
-            string token = _service.GetAuthenticationToken();
+            string token = obj.GetAuthenticationToken();
             if (string.IsNullOrEmpty(token))
-                return BadRequest("Failed to retrieve token.");
+            {
+                return BadRequest("Failed to retrieve token."); 
+            }
             return Ok(new { access_token = token });
         }
 
@@ -33,10 +36,11 @@ namespace AccessPeople.Controllers
         public IActionResult FetchTests([FromHeader(Name = "Authorization")] string authHeader)
         {
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return BadRequest("Missing or invalid Authorization header.");
-
+            {
+                return BadRequest("Missing or invalid Authorization header."); 
+            } 
             string token = authHeader.Replace("Bearer ", "").Trim();
-            var tests = _service.FetchAssessmentTests(token);
+            var tests = obj.FetchAssessmentTests(token);
             return Ok(tests);
         }
 
@@ -44,14 +48,27 @@ namespace AccessPeople.Controllers
         public IActionResult GenerateLink([FromHeader(Name = "Authorization")] string authHeader, [FromBody] GenerateAssessmentLinkReqCls request)
         {
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-                return BadRequest("Missing or invalid Authorization header.");
+            {
+                return BadRequest("Missing or invalid Authorization header."); 
+            } 
 
-            string token = authHeader.Replace("Bearer ", "").Trim();
-
-            var response = _service.GenerateAssessmentLink(token, request.Accountcode, int.Parse(request.NoofUsers));
+            string token = authHeader.Replace("Bearer ", "").Trim(); 
+            var response = obj.GenerateAssessmentLink(token, request.Accountcode, int.Parse(request.NoofUsers));
             if (response == null)
-                return BadRequest("Failed to generate assessment link.");
+            {
+                return BadRequest("Failed to generate assessment link."); 
+            } 
+            return Ok(response);
+        }
 
+        [HttpPost("Webhook")]
+        public IActionResult Webhook()
+        {
+            var response = obj.WebHook();
+            if (string.IsNullOrEmpty(response.ToString()))
+            {
+                return BadRequest("Failed to retrieve Webhook."); 
+            }
             return Ok(response);
         }
     }

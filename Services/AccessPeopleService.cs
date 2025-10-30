@@ -4,19 +4,36 @@ using System.IO;
 using System.Collections.Generic;
 using System;
 using static AccessPeople.Models.AccessPeopleModels;
+using AccessPeople.Data;
+using Microsoft.Extensions.Configuration;
 
 namespace YourProject.Services
 {
     public class AssessPeopleService
-    {  
+     {
+        private readonly DBcontext _dbHelper;
+
+        public AssessPeopleService(IConfiguration configuration)
+        {
+
+            DBcontext objDB = new DBcontext(configuration);
+        }
+
         public string GetAuthenticationToken()
         {
-            string url = "https://www.assesspeople.com/SG/SGTH/authenticate";
+            DBmodel creds = objDB.DBretrieve();
+            if (creds == null || string.IsNullOrEmpty(creds.client_id))
+            {
+                throw new Exception("Credentails not found in the database."); 
+            }
+
+            string url = "https://www.assesspeople.com/SG/SGTH/authenticate"; 
             var requestBody = new
             {
-                client_id = "01BE4050133921441D1BFAA103333B4CCEC2",
-                client_secret = "0x59e2fc4054022e17505688ecd8b740c4db39ed8f5ec287b8af43602bd39ae3"
+                client_id = creds.client_id,
+                client_secret = creds.client_secret
             };
+
 
             string jsonBody = JsonConvert.SerializeObject(requestBody);
             var apiResult = ApiCall(url, "POST", "", jsonBody);
@@ -62,6 +79,29 @@ namespace YourProject.Services
             return AssessmentLink;
         }
 
+        public WebhookRes WebHook()
+        { 
+            string url = "https://api.turbohire.co/api/assessments/result";
+            var requestBody = new
+            {
+                AssessmentPartnerType = "AssessPeople",
+                AssessmentInviteId = "",
+                AssessmentStatus = "ongiong",
+                Score = 0,
+                Total = 0,
+                ReportLink = "",
+                Metadata = "",
+            };
+            string jsonBody = JsonConvert.SerializeObject(requestBody);
+            var apiResult = ApiCall(url, "POST", "", jsonBody);
+            if (!apiResult.IsSuccess)
+            {
+                Console.WriteLine($"Failed to Send WebHook: {apiResult.ErrorMessage}");
+                return null;
+            }
+            var WebhookRes = JsonConvert.DeserializeObject<WebhookRes>(apiResult.Response);  
+            return WebhookRes;
+        }
         public ApiResult ApiCall(string url, string method, string accessToken = "", string jsonBody = "")
         {
             ApiResult result = new ApiResult();
