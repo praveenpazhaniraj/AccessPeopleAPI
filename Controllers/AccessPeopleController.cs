@@ -22,27 +22,41 @@ namespace AccessPeople.Controllers
         }
 
         [HttpPost("GetToken")]
-        public IActionResult GetToken()
+        public async Task<IActionResult> GetToken()
         {
-            string token = obj.GetAuthenticationToken();
+            string token = await obj.GetToken();  
+
             if (string.IsNullOrEmpty(token))
             {
-                return BadRequest("Failed to retrieve token."); 
+                return BadRequest("Failed to retrieve token.");
             }
+
             return Ok(new { access_token = token });
         }
 
+        //[HttpPost("AuthToken")]
+        //public IActionResult AuthToken()
+        //{
+        //    string token = obj.GetAuthenticationToken();
+        //    if (string.IsNullOrEmpty(token))
+        //    {
+        //        return BadRequest("Failed to retrieve token."); 
+        //    }
+        //    return Ok(new { access_token = token });
+        //}
+
         [HttpGet("FetchAssesmentTests")]
-        public IActionResult FetchTests([FromHeader(Name = "Authorization")] string authHeader)
+        public IActionResult FetchTests([FromQuery] string token) // pass token as query param
         {
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            if (string.IsNullOrEmpty(token))
             {
-                return BadRequest("Missing or invalid Authorization header."); 
-            } 
-            string token = authHeader.Replace("Bearer ", "").Trim();
+                return BadRequest("Missing access token.");
+            }
+
             var tests = obj.FetchAssessmentTests(token);
             return Ok(tests);
         }
+
 
         [HttpPost("GenerateAssesmentLink")]
         public IActionResult GenerateLink([FromHeader(Name = "Authorization")] string authHeader, [FromBody] GenerateAssessmentLinkReqCls request)

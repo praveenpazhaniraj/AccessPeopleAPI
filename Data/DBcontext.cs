@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
+using System.Collections.Generic;
 using System.Data.SqlClient;
 using static AccessPeople.Models.AccessPeopleModels;
 
@@ -7,11 +8,11 @@ namespace AccessPeople.Data
 {
     public class DBcontext
     {
-        private readonly string _connectionString;
+        private readonly string connectionString;
 
         public DBcontext(IConfiguration configuration)
-        { 
-            _connectionString = configuration.GetConnectionString("DefaultConnection");
+        {
+            connectionString = configuration.GetConnectionString("DefaultConnection");
         }
 
         public DBmodel DBretrieve()
@@ -19,7 +20,7 @@ namespace AccessPeople.Data
             DBmodel objdb = new DBmodel();
             try
             {
-                using (SqlConnection conn = new SqlConnection(_connectionString))
+                using (SqlConnection conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
 
@@ -51,6 +52,46 @@ namespace AccessPeople.Data
             }
 
             return objdb;
+        }
+
+        public List<FetchAssessmentResCls> FetchAssessmentTestsFromDb()
+        {
+            List<FetchAssessmentResCls> assessmentTests = new List<FetchAssessmentResCls>();
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Query to fetch the assessment test data from the database
+                    string query = "SELECT Account_Name, Account_Code FROM AccountDetails";  
+
+                    using (SqlCommand cmd = new SqlCommand(query, conn))
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            assessmentTests.Add(new FetchAssessmentResCls
+                            {
+                                Account_Name = reader["Account_Name"].ToString(),
+                                Account_Code = reader["Account_Code"].ToString()
+                            });
+                        }
+                    }
+                }
+            }
+            catch (SqlException ex)
+            {
+                Console.WriteLine($"SQL Error: {ex.Message}");
+                throw new Exception("Database connection or query failed.", ex);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                throw;
+            }
+
+            return assessmentTests;
         }
     }
 }
