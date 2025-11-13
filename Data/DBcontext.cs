@@ -64,7 +64,7 @@ namespace AccessPeople.Data
                     conn.Open();
 
                     // Query to fetch the assessment test data from the database
-                    string query = "SELECT Account_Name, Account_Code FROM AccountDetails";  
+                    string query = "SELECT Account_Name, Account_Code FROM AssessmentTestsAPI";  
 
                     using (SqlCommand cmd = new SqlCommand(query, conn))
                     using (SqlDataReader reader = cmd.ExecuteReader())

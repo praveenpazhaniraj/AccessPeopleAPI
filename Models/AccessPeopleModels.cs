@@ -20,6 +20,7 @@ namespace AccessPeople.Models
             public string access_token { get; set; }
             public int expires_in { get; set; }
         }
+         
         public class DBmodel
         {
             public string client_id { get; set; }

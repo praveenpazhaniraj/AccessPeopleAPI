@@ -28,105 +28,109 @@ namespace YourProject.Services
              objDB = new DBcontext(configuration);
              Client = new HttpClient(); 
         }
-        public async Task<string> GetToken()
+
+        public async Task<AuthenticationResCls> GetToken()
         {
+            ////Get Token form Client Server via API Call.  
+            //DBmodel creds = objDB.DBretrieve();
+            //if (creds == null || string.IsNullOrEmpty(creds.client_id))
+            //{
+            //    throw new Exception("Credentails not found in the database.");
+            //}
+
+            //string url = "https://www.assesspeople.com/SG/SGTH/authenticate";
+            //var requestBody = new
+            //{
+            //    client_id = creds.client_id,
+            //    client_secret = creds.client_secret
+            //};
+
+            //string jsonBody = JsonConvert.SerializeObject(requestBody);
+            //var apiResult = ApiCall(url, "POST", "", jsonBody);
+            //if (!apiResult.IsSuccess)
+            //{
+            //    Console.WriteLine($"Authentication failed: {apiResult.ErrorMessage}");
+            //    return null;
+            //}
+
+            //var authResponse = JsonConvert.DeserializeObject<AuthenticationResCls>(apiResult.Response);
+            //return authResponse?.access_token;
+
+            //Generating Token ourself for validations.
             string ClientID = "01BE4050133921441D1BFAA103333B4CCEC2";
             string ClientSecret = "0x59e2fc4054022e17505688ecd8b740c4db39ed8f5ec287b8af43602bd39ae3";
             string url = "https://www.assesspeople.com/SG/SGTH/authenticate";
 
-            // If token is still valid, just return it
+            int tokenValiditySeconds = 3600; // 1 hour 
+            // If token is still valid, return existing one
             if (!string.IsNullOrEmpty(Token) && DateTime.Now < TokenExpiry)
             {
-                return Token;
+                return new AuthenticationResCls
+                {
+                    access_token = Token,
+                    expires_in = (int)(TokenExpiry - DateTime.Now).TotalSeconds
+                };
             }
 
             using (HttpClient client = new HttpClient())
             {
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; 
                 byte[] client_byte = Encoding.UTF8.GetBytes(ClientID);
                 var clientid_mod = Convert.ToBase64String(client_byte);
                 byte[] clientsecret_byte = Encoding.UTF8.GetBytes(ClientSecret);
                 var clientsecret_mod = Convert.ToBase64String(clientsecret_byte);
-                string credidentials = clientid_mod + ":" + clientsecret_mod;
-                string authorization = Convert.ToBase64String(Encoding.Default.GetBytes(credidentials));
+                string credentials = clientid_mod + ":" + clientsecret_mod;
+                string authorization = Convert.ToBase64String(Encoding.Default.GetBytes(credentials)); 
                 client.DefaultRequestHeaders.Add("Authorization", "Basic " + authorization);
-                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-
-                var postData = new StringContent($"grant_type=client_credentials&client_id={ClientID}&client_secret={ClientSecret}",
-                                                 Encoding.UTF8, "application/x-www-form-urlencoded");
-
+                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json")); 
+                var postData = new StringContent($"grant_type=client_credentials&client_id={ClientID}&client_secret={ClientSecret}",Encoding.UTF8,"application/x-www-form-urlencoded");
                 try
-                { 
+                {
                     await client.PostAsync(url, postData);
 
-                    //Token Generation valid for 3600 sec
+                    //Token Generation.  
                     Token = GenerateGuidToken();
-                    TokenExpiry = DateTime.Now.AddSeconds(3600);
+                    TokenExpiry = DateTime.Now.AddSeconds(tokenValiditySeconds); 
+                    string GenerateGuidToken()
+                    {
+                        return Guid.NewGuid().ToString("N");
+                    }
 
-                    return Token;
+                    return new AuthenticationResCls
+                    {
+                        access_token = Token,
+                        expires_in = tokenValiditySeconds
+                    };
                 }
                 catch (Exception ex)
                 {
-                    return $"Error: {ex.Message}";
+                    return new AuthenticationResCls
+                    {
+                        access_token = $"Error: {ex.Message}",
+                        expires_in = 0
+                    };
                 }
             }
-        }
-
-        private string GenerateGuidToken()
-        { 
-            return Guid.NewGuid().ToString("N");  
-        }
-
-        //public string GetAuthenticationToken()
-        //{
-        //    DBmodel creds = objDB.DBretrieve();
-        //    if (creds == null || string.IsNullOrEmpty(creds.client_id))
-        //    {
-        //        throw new Exception("Credentails not found in the database.");
-        //    }
-
-        //    string url = "https://www.assesspeople.com/SG/SGTH/authenticate";
-        //    var requestBody = new
-        //    {
-        //        client_id = creds.client_id,
-        //        client_secret = creds.client_secret
-        //    };
-        //    var requestBody = new
-        //    {
-        //        client_id = "12345678909876543",
-        //        client_secret = "asdfghjkllkjhgfdsasdfgh"
-        //    };
-
-
-        //    string jsonBody = JsonConvert.SerializeObject(requestBody);
-        //    var apiResult = ApiCall(url, "POST", "", jsonBody);
-        //    if (!apiResult.IsSuccess)
-        //    {
-        //        Console.WriteLine($"Authentication failed: {apiResult.ErrorMessage}");
-        //        return null;
-        //    }
-
-        //    var authResponse = JsonConvert.DeserializeObject<AuthenticationResCls>(apiResult.Response);
-        //    return authResponse?.access_token;
-        //}
-
+        } 
+          
         public List<FetchAssessmentResCls> FetchAssessmentTests(string accessToken)
         {
-            
-                DBcontext objDB = new DBcontext(configuration);
-                var fetchedAssessment = objDB.FetchAssessmentTestsFromDb();  // Assuming _dbContext is injected
-                return fetchedAssessment;
-             
-            string url = "https://www.assesspeople.com/SG/SGTH/AssessmentTest?category=SG";
-            var apiResult = ApiCall(url, "GET", accessToken);
-            if (!apiResult.IsSuccess)
-            {
-                Console.WriteLine("Failed to fetch assessment tests: {apiResult.ErrorMessage}");
-                return new List<FetchAssessmentResCls>();
-            }
-            var FetchedAssesment = JsonConvert.DeserializeObject<List<FetchAssessmentResCls>>(apiResult.Response);
-            return FetchedAssesment;
+
+            //Retrieving FetchedAssessmentTest form Local DB
+            //DBcontext objDB = new DBcontext();
+            var fetchedAssessment = objDB.FetchAssessmentTestsFromDb();   
+            return fetchedAssessment;
+
+            ////Retrieving FetchedAssessmentTest form Client Server via API Call. 
+            //string url = "https://www.assesspeople.com/SG/SGTH/AssessmentTest?category=SG";
+            //var apiResult = ApiCall(url, "GET", accessToken);
+            //if (!apiResult.IsSuccess)
+            //{
+            //    Console.WriteLine("Failed to fetch assessment tests: {apiResult.ErrorMessage}");
+            //    return new List<FetchAssessmentResCls>();
+            //}
+            //var FetchedAssesment = JsonConvert.DeserializeObject<List<FetchAssessmentResCls>>(apiResult.Response);
+            //return FetchedAssesment;
         }
 
         public GenerateAssessmentLinkResCls GenerateAssessmentLink(string accessToken, string accountCode, int noOfUsers)

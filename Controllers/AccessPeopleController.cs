@@ -24,29 +24,19 @@ namespace AccessPeople.Controllers
         [HttpPost("GetToken")]
         public async Task<IActionResult> GetToken()
         {
-            string token = await obj.GetToken();  
+            var tokenResult = await obj.GetToken();
 
-            if (string.IsNullOrEmpty(token))
+            if (tokenResult == null || string.IsNullOrEmpty(tokenResult.access_token))
             {
                 return BadRequest("Failed to retrieve token.");
             }
 
-            return Ok(new { access_token = token });
+            return Ok(tokenResult);
         }
-
-        //[HttpPost("AuthToken")]
-        //public IActionResult AuthToken()
-        //{
-        //    string token = obj.GetAuthenticationToken();
-        //    if (string.IsNullOrEmpty(token))
-        //    {
-        //        return BadRequest("Failed to retrieve token."); 
-        //    }
-        //    return Ok(new { access_token = token });
-        //}
+         
 
         [HttpGet("FetchAssesmentTests")]
-        public IActionResult FetchTests([FromQuery] string token) // pass token as query param
+        public IActionResult FetchAssesmentTests([FromQuery] string token) // pass token as query param
         {
             if (string.IsNullOrEmpty(token))
             {
