@@ -13,56 +13,35 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.JsonWebTokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Data.SqlClient;
+using System.Data;
 
 namespace YourProject.Services
 {
     public class AssessPeopleService
-     {
-        private readonly DBcontext objDB;
-        private readonly HttpClient Client;
-        private static string Token;
+    {
+        private readonly DBcontext objDB;    
+        private readonly HttpClient _client; 
+        private static string Token = "";
         private static DateTime TokenExpiry;
-
-        public AssessPeopleService(IConfiguration configuration)
-        { 
-             objDB = new DBcontext(configuration);
-             Client = new HttpClient(); 
-        }
-
-        public async Task<AuthenticationResCls> GetToken()
+        public AssessPeopleService(DBcontext db, HttpClient client)
         {
-            ////Get Token form Client Server via API Call.  
-            //DBmodel creds = objDB.DBretrieve();
-            //if (creds == null || string.IsNullOrEmpty(creds.client_id))
-            //{
-            //    throw new Exception("Credentails not found in the database.");
-            //}
-
-            //string url = "https://www.assesspeople.com/SG/SGTH/authenticate";
-            //var requestBody = new
-            //{
-            //    client_id = creds.client_id,
-            //    client_secret = creds.client_secret
-            //};
-
-            //string jsonBody = JsonConvert.SerializeObject(requestBody);
-            //var apiResult = ApiCall(url, "POST", "", jsonBody);
-            //if (!apiResult.IsSuccess)
-            //{
-            //    Console.WriteLine($"Authentication failed: {apiResult.ErrorMessage}");
-            //    return null;
-            //}
-
-            //var authResponse = JsonConvert.DeserializeObject<AuthenticationResCls>(apiResult.Response);
-            //return authResponse?.access_token;
-
-            //Generating Token ourself for validations.
-            string ClientID = "01BE4050133921441D1BFAA103333B4CCEC2";
-            string ClientSecret = "0x59e2fc4054022e17505688ecd8b740c4db39ed8f5ec287b8af43602bd39ae3";
-            string url = "https://www.assesspeople.com/SG/SGTH/authenticate";
-
-            int tokenValiditySeconds = 3600; // 1 hour 
-            // If token is still valid, return existing one
+            objDB = db;
+            _client = client;
+        }
+        public AuthenticationResCls GenerateTokenForClient(string client_id, string client_secret)
+        {
+            //Validate incoming credentials 
+            if (client_id != "01BE4050133921441D1BFAA103333B4CCEC2"||client_secret != "0x59e2fc4054022e17505688ecd8b740c4db39ed8f5ec287b8af43602bd39ae3")
+            {
+                return new AuthenticationResCls
+                {
+                    access_token = "",
+                    expires_in = 0,
+                    error = "Invalid client_id or client_secret"
+                };
+            }
+            // If existing token is valid, return it
             if (!string.IsNullOrEmpty(Token) && DateTime.Now < TokenExpiry)
             {
                 return new AuthenticationResCls
@@ -72,85 +51,49 @@ namespace YourProject.Services
                 };
             }
 
-            using (HttpClient client = new HttpClient())
+            // Generate new token
+            using (var rng = new System.Security.Cryptography.RNGCryptoServiceProvider())
             {
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12; 
-                byte[] client_byte = Encoding.UTF8.GetBytes(ClientID);
-                var clientid_mod = Convert.ToBase64String(client_byte);
-                byte[] clientsecret_byte = Encoding.UTF8.GetBytes(ClientSecret);
-                var clientsecret_mod = Convert.ToBase64String(clientsecret_byte);
-                string credentials = clientid_mod + ":" + clientsecret_mod;
-                string authorization = Convert.ToBase64String(Encoding.Default.GetBytes(credentials)); 
-                client.DefaultRequestHeaders.Add("Authorization", "Basic " + authorization);
-                client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json")); 
-                var postData = new StringContent($"grant_type=client_credentials&client_id={ClientID}&client_secret={ClientSecret}",Encoding.UTF8,"application/x-www-form-urlencoded");
-                try
-                {
-                    await client.PostAsync(url, postData);
+                var bytes = new byte[32];
+                rng.GetBytes(bytes);
+                Token = Convert.ToBase64String(bytes).Replace("+", "").Replace("/", "").Replace("=", "");
+            } 
+            TokenExpiry = DateTime.Now.AddSeconds(3600); 
 
-                    //Token Generation.  
-                    Token = GenerateGuidToken();
-                    TokenExpiry = DateTime.Now.AddSeconds(tokenValiditySeconds); 
-                    string GenerateGuidToken()
-                    {
-                        return Guid.NewGuid().ToString("N");
-                    }
-
-                    return new AuthenticationResCls
-                    {
-                        access_token = Token,
-                        expires_in = tokenValiditySeconds
-                    };
-                }
-                catch (Exception ex)
-                {
-                    return new AuthenticationResCls
-                    {
-                        access_token = $"Error: {ex.Message}",
-                        expires_in = 0
-                    };
-                }
-            }
+            return new AuthenticationResCls
+            {
+                access_token = Token,
+                expires_in = 3600
+            }; 
         } 
-          
-        public List<FetchAssessmentResCls> FetchAssessmentTests(string accessToken)
+        public static bool IsValidToken(string token)
         {
-
-            //Retrieving FetchedAssessmentTest form Local DB
-            //DBcontext objDB = new DBcontext();
-            var fetchedAssessment = objDB.FetchAssessmentTestsFromDb();   
-            return fetchedAssessment;
-
-            ////Retrieving FetchedAssessmentTest form Client Server via API Call. 
-            //string url = "https://www.assesspeople.com/SG/SGTH/AssessmentTest?category=SG";
-            //var apiResult = ApiCall(url, "GET", accessToken);
-            //if (!apiResult.IsSuccess)
-            //{
-            //    Console.WriteLine("Failed to fetch assessment tests: {apiResult.ErrorMessage}");
-            //    return new List<FetchAssessmentResCls>();
-            //}
-            //var FetchedAssesment = JsonConvert.DeserializeObject<List<FetchAssessmentResCls>>(apiResult.Response);
-            //return FetchedAssesment;
+            return !string.IsNullOrEmpty(Token) && token == Token && DateTime.Now < TokenExpiry;
         }
 
-        public GenerateAssessmentLinkResCls GenerateAssessmentLink(string accessToken, string accountCode, int noOfUsers)
+        public async Task<List<FetchAssessmentResCls>> FetchAssessmentTestsAsync(string accessToken)
         {
-            string url = "https://www.assesspeople.com/SG/SGTH/GenerateIds";
-            var requestBody = new
+            if (!IsValidToken(accessToken))
             {
-                Accountcode = accountCode,
-                NoofUsers = noOfUsers.ToString()
-            };
-            string jsonBody = JsonConvert.SerializeObject(requestBody);
-            var apiResult = ApiCall(url, "POST", accessToken, jsonBody);
+                throw new UnauthorizedAccessException("Invalid or expired token."); 
+            } 
 
-            if (!apiResult.IsSuccess)
+            // Retrieve from local DB 
+            var tests = await objDB.FetchAssessmentTestsFromDbAsync();
+            return tests;
+        }
+          
+        public async Task<GenerateAssessmentLinkResCls> GenerateAssessmentLinkAsync(string token, string accountCode, string noOfUsers)
+        {
+            if (!IsValidToken(token))
+                throw new UnauthorizedAccessException("Invalid or expired token.");
+
+            var users = await objDB.GenerateUserIdsWithPasswordsAsync(accountCode, noOfUsers);
+
+            return new GenerateAssessmentLinkResCls
             {
-                Console.WriteLine($"Failed to generate assessment link: {apiResult.ErrorMessage}");
-                return null;
-            }
-            var AssessmentLink = JsonConvert.DeserializeObject<GenerateAssessmentLinkResCls>(apiResult.Response);
-            return AssessmentLink;
+                UserTable = users
+            };
         }
 
         public WebhookRes WebHook()

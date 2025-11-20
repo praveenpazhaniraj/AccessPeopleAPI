@@ -19,9 +19,10 @@ namespace AccessPeople.Models
         {
             public string access_token { get; set; }
             public int expires_in { get; set; }
+            public string  error { get; set; }
         }
-         
-        public class DBmodel
+
+        public class LoginRequest
         {
             public string client_id { get; set; }
             public string client_secret { get; set; }
@@ -41,7 +42,7 @@ namespace AccessPeople.Models
          
         public class GenerateAssessmentLinkResCls
         {
-            public List<GenerateAssessmentUser> Table1 { get; set; }
+            public List<GenerateAssessmentUser> UserTable { get; set; }
         }
 
         public class GenerateAssessmentUser

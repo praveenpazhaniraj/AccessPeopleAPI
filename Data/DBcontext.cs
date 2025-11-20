@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
+using System.Threading.Tasks;
 using static AccessPeople.Models.AccessPeopleModels;
 
 namespace AccessPeople.Data
@@ -14,62 +16,21 @@ namespace AccessPeople.Data
         {
             connectionString = configuration.GetConnectionString("DefaultConnection");
         }
-
-        public DBmodel DBretrieve()
+         
+        public async Task<List<FetchAssessmentResCls>> FetchAssessmentTestsFromDbAsync()
         {
-            DBmodel objdb = new DBmodel();
+            var assessmentTests = new List<FetchAssessmentResCls>();
             try
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                using (var conn = new SqlConnection(connectionString))
                 {
-                    conn.Open();
+                    await conn.OpenAsync();
+                    string query = "SELECT Account_Name, Account_Code FROM AssessmentTestsAPI";
 
-                    string query = "SELECT TOP 1 client_id, client_secret FROM ClientApiDetails";
-
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    using (var cmd = new SqlCommand(query, conn))
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        if (reader.Read())
-                        {
-                            objdb = new DBmodel
-                            {
-                                client_id = reader["client_id"]?.ToString(),
-                                client_secret = reader["client_secret"]?.ToString()
-                            };
-                        }
-                    }
-                }
-            }
-            catch (SqlException ex)
-            {
-                Console.WriteLine($"SQL Error: {ex.Message}");
-                throw new Exception("Database connection or query failed.", ex);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-                throw;
-            }
-
-            return objdb;
-        }
-
-        public List<FetchAssessmentResCls> FetchAssessmentTestsFromDb()
-        {
-            List<FetchAssessmentResCls> assessmentTests = new List<FetchAssessmentResCls>();
-            try
-            {
-                using (SqlConnection conn = new SqlConnection(connectionString))
-                {
-                    conn.Open();
-
-                    // Query to fetch the assessment test data from the database
-                    string query = "SELECT Account_Name, Account_Code FROM AssessmentTestsAPI";  
-
-                    using (SqlCommand cmd = new SqlCommand(query, conn))
-                    using (SqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        while (reader.Read())
+                        while (await reader.ReadAsync())
                         {
                             assessmentTests.Add(new FetchAssessmentResCls
                             {
@@ -80,18 +41,44 @@ namespace AccessPeople.Data
                     }
                 }
             }
-            catch (SqlException ex)
-            {
-                Console.WriteLine($"SQL Error: {ex.Message}");
-                throw new Exception("Database connection or query failed.", ex);
-            }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"DB Error: {ex.Message}");
                 throw;
             }
 
             return assessmentTests;
         }
-    }
+        public async Task<List<GenerateAssessmentUser>> GenerateUserIdsWithPasswordsAsync(string accountCode, string noOfUsers)
+        {
+            var users = new List<GenerateAssessmentUser>();
+
+            using (var conn = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand("GenerateUserIdsWithPasswords", conn))
+            {
+                cmd.CommandType = CommandType.StoredProcedure;
+                cmd.Parameters.AddWithValue("@AccountCode", accountCode);
+                cmd.Parameters.AddWithValue("@UnitsToBeGenerated", noOfUsers);
+
+                await conn.OpenAsync();
+
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        users.Add(new GenerateAssessmentUser
+                        {
+                            AccountCode = reader["AccountCode"].ToString(),
+                            UserCode = reader["UserCode"].ToString(),
+                            Password = reader["Password"].ToString()
+                        });
+                    }
+                }
+            }
+
+            return users;
+        }
+
+    } 
+
 }

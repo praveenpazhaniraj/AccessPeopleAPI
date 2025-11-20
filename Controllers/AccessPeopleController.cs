@@ -16,54 +16,83 @@ namespace AccessPeople.Controllers
     {
         private readonly AssessPeopleService obj;
 
-        public AssessPeopleController(IConfiguration configuration)
+        public AssessPeopleController(AssessPeopleService service)
         {
-            obj = new AssessPeopleService(configuration);
+            obj = service;
         }
 
-        [HttpPost("GetToken")]
-        public async Task<IActionResult> GetToken()
-        {
-            var tokenResult = await obj.GetToken();
 
-            if (tokenResult == null || string.IsNullOrEmpty(tokenResult.access_token))
+        [HttpPost("authenticate")]
+        public IActionResult Authenticate([FromBody] LoginRequest request)
+        { 
+            var tokenResponse = obj.GenerateTokenForClient(request.client_id, request.client_secret);
+
+            if (!string.IsNullOrEmpty(tokenResponse.error))
             {
-                return BadRequest("Failed to retrieve token.");
+                return Unauthorized(tokenResponse); 
             }
 
-            return Ok(tokenResult);
-        }
-         
-
-        [HttpGet("FetchAssesmentTests")]
-        public IActionResult FetchAssesmentTests([FromQuery] string token) // pass token as query param
-        {
-            if (string.IsNullOrEmpty(token))
-            {
-                return BadRequest("Missing access token.");
-            }
-
-            var tests = obj.FetchAssessmentTests(token);
-            return Ok(tests);
+            return Ok(tokenResponse);
         }
 
 
-        [HttpPost("GenerateAssesmentLink")]
-        public IActionResult GenerateLink([FromHeader(Name = "Authorization")] string authHeader, [FromBody] GenerateAssessmentLinkReqCls request)
-        {
+        [HttpGet("FetchAssessmentTests")]
+        public async Task<IActionResult> FetchAssessmentTests()
+        { 
+
+            //Read Authorization header
+            var authHeader = Request.Headers["Authorization"].ToString();
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
             {
-                return BadRequest("Missing or invalid Authorization header."); 
-            } 
+                return Unauthorized(new { error = "Missing or invalid Authorization header" });
+            }
 
-            string token = authHeader.Replace("Bearer ", "").Trim(); 
-            var response = obj.GenerateAssessmentLink(token, request.Accountcode, int.Parse(request.NoofUsers));
-            if (response == null)
+            string token = authHeader.Substring("Bearer ".Length).Trim(); 
+            try
             {
-                return BadRequest("Failed to generate assessment link."); 
-            } 
-            return Ok(response);
+                //Await the async service method
+                var tests = await obj.FetchAssessmentTestsAsync(token);
+                return Ok(tests);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
+
+
+        [HttpPost("GenerateAssessmentLink")]
+        public async Task<IActionResult> GenerateAssessmentLink([FromBody] GenerateAssessmentLinkReqCls request)
+        {
+            var authHeader = Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+                return Unauthorized(new { error = "Missing or invalid Authorization header" });
+
+            string token = authHeader.Substring("Bearer ".Length).Trim();
+
+            try
+            {
+                var response = await obj.GenerateAssessmentLinkAsync(token, request.Accountcode, request.NoofUsers);
+
+                if (response == null || response.UserTable.Count == 0)
+                    return BadRequest(new { error = "Failed to generate assessment link." });
+
+                return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+
 
         [HttpPost("Webhook")]
         public IActionResult Webhook()
