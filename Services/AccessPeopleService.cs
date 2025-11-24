@@ -31,24 +31,21 @@ namespace YourProject.Services
         }
         public AuthenticationResCls GenerateTokenForClient(string client_id, string client_secret)
         {
+            AuthenticationResCls objRes = new AuthenticationResCls();
+
             //Validate incoming credentials 
             if (client_id != "01BE4050133921441D1BFAA103333B4CCEC2"||client_secret != "0x59e2fc4054022e17505688ecd8b740c4db39ed8f5ec287b8af43602bd39ae3")
             {
-                return new AuthenticationResCls
-                {
-                    access_token = "",
-                    expires_in = 0,
-                    error = "Invalid client_id or client_secret"
-                };
+                objRes.access_token = "";
+                objRes.expires_in = 0;
+                objRes.error = "Invalid client_id or client_secret"; 
             }
+
             // If existing token is valid, return it
             if (!string.IsNullOrEmpty(Token) && DateTime.Now < TokenExpiry)
             {
-                return new AuthenticationResCls
-                {
-                    access_token = Token,
-                    expires_in = (int)(TokenExpiry - DateTime.Now).TotalSeconds
-                };
+                objRes.access_token = Token;
+                objRes.expires_in = (int)(TokenExpiry - DateTime.Now).TotalSeconds; 
             }
 
             // Generate new token
@@ -58,13 +55,12 @@ namespace YourProject.Services
                 rng.GetBytes(bytes);
                 Token = Convert.ToBase64String(bytes).Replace("+", "").Replace("/", "").Replace("=", "");
             } 
-            TokenExpiry = DateTime.Now.AddSeconds(3600); 
+            TokenExpiry = DateTime.Now.AddSeconds(3600);
 
-            return new AuthenticationResCls
-            {
-                access_token = Token,
-                expires_in = 3600
-            }; 
+            objRes.access_token = Token;
+            objRes.expires_in = 3600;
+
+            return objRes;
         } 
         public static bool IsValidToken(string token)
         {
@@ -86,7 +82,9 @@ namespace YourProject.Services
         public async Task<GenerateAssessmentLinkResCls> GenerateAssessmentLinkAsync(string token, string accountCode, string noOfUsers)
         {
             if (!IsValidToken(token))
-                throw new UnauthorizedAccessException("Invalid or expired token.");
+            {
+                throw new UnauthorizedAccessException("Invalid or expired token."); 
+            }
 
             var users = await objDB.GenerateUserIdsWithPasswordsAsync(accountCode, noOfUsers);
 

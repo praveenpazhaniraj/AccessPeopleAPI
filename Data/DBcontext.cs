@@ -49,36 +49,48 @@ namespace AccessPeople.Data
 
             return assessmentTests;
         }
+
         public async Task<List<GenerateAssessmentUser>> GenerateUserIdsWithPasswordsAsync(string accountCode, string noOfUsers)
         {
-            var users = new List<GenerateAssessmentUser>();
-
-            using (var conn = new SqlConnection(connectionString))
-            using (var cmd = new SqlCommand("GenerateUserIdsWithPasswords", conn))
+            if (!int.TryParse(noOfUsers, out int unitsToGenerate) || unitsToGenerate <= 0)
             {
-                cmd.CommandType = CommandType.StoredProcedure;
-                cmd.Parameters.AddWithValue("@AccountCode", accountCode);
-                cmd.Parameters.AddWithValue("@UnitsToBeGenerated", noOfUsers);
+                throw new ArgumentException("noOfUsers must be a valid positive integer.");
+            }
 
+            var users = new List<GenerateAssessmentUser>();
+            using var conn = new SqlConnection(connectionString);
+            using var cmd = new SqlCommand("GenerateUserIdsWithPasswords", conn)
+            {
+                CommandType = CommandType.StoredProcedure
+            };
+
+            cmd.Parameters.Add("@AccountCode", SqlDbType.NVarChar, 50).Value = accountCode;
+            cmd.Parameters.Add("@UnitsToBeGenerated", SqlDbType.Int).Value = unitsToGenerate;
+
+            try
+            {
                 await conn.OpenAsync();
 
-                using (var reader = await cmd.ExecuteReaderAsync())
+                using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
+                    users.Add(new GenerateAssessmentUser
                     {
-                        users.Add(new GenerateAssessmentUser
-                        {
-                            AccountCode = reader["AccountCode"].ToString(),
-                            UserCode = reader["UserCode"].ToString(),
-                            Password = reader["Password"].ToString()
-                        });
-                    }
+                        AccountCode = reader["AccountCode"]?.ToString(),
+                        UserCode = reader["UserCode"]?.ToString(),
+                        Password = reader["Password"]?.ToString(), 
+                    });
                 }
+            }
+            catch (SqlException ex)
+            {
+                // LOG IT HERE
+                throw new Exception("Database error occurred while generating user IDs.", ex);
             }
 
             return users;
-        }
+             
+        }  
 
     } 
-
 }

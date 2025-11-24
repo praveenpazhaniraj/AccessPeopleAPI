@@ -37,7 +37,7 @@ namespace AccessPeople.Models
         public class GenerateAssessmentLinkReqCls
         {
             public string Accountcode { get; set; }
-            public string NoofUsers { get; set; }
+            public int NoofUsers { get; set; }
         }
          
         public class GenerateAssessmentLinkResCls
