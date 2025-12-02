@@ -35,25 +35,7 @@ namespace AccessPeople.Data
 
                 string strjson = JsonConvert.SerializeObject(ds.Tables[0]);
                 assessmentTests = JsonConvert.DeserializeObject<List<FetchAssessmentResCls>>(strjson);
-
-                //using (var conn = new SqlConnection(connectionString))
-                //{
-                //    await conn.OpenAsync();
-                //    string query = "SELECT Account_Name, Account_Code FROM AssessmentTestsAPI";
-
-                //    using (var cmd = new SqlCommand(query, conn))
-                //    using (var reader = await cmd.ExecuteReaderAsync())
-                //    {
-                //        while (await reader.ReadAsync())
-                //        {
-                //            assessmentTests.Add(new FetchAssessmentResCls
-                //            {
-                //                Account_Name = reader["Account_Name"].ToString(),
-                //                Account_Code = reader["Account_Code"].ToString()
-                //            });
-                //        }
-                //    }
-                //}
+              
             }
             catch (Exception ex)
             {
@@ -87,9 +69,9 @@ namespace AccessPeople.Data
                         da.Fill(ds);
                     }
                 }
+
                 string strjson = JsonConvert.SerializeObject(ds.Tables[0]);
-                users = JsonConvert.DeserializeObject<List<GenerateAssessmentUser>>(strjson);
-                 
+                users = JsonConvert.DeserializeObject<List<GenerateAssessmentUser>>(strjson); 
             }
             catch (SqlException ex)
             {
@@ -99,7 +81,76 @@ namespace AccessPeople.Data
 
             return users;
              
-        }  
+        }
 
-    } 
+        public async Task<CandidateResultResCls> GetCandidateResultFromDBAsync(string userCode)
+        {
+            CandidateResultResCls OjbRes = new CandidateResultResCls();
+            OjbRes.CandidateScore = new List<CandidateScoreRes>();
+            OjbRes.Response = new List<Response>();
+            OjbRes.TotalScore = new List<TotalScore>();
+
+            try
+            {
+                DataSet ds = new DataSet();
+                using (SqlConnection con = new SqlConnection(connectionString))
+                {
+                    using (SqlCommand cmd = new SqlCommand("GetCandidateResultSaintGobain", con))
+                    {
+                        cmd.CommandType = CommandType.StoredProcedure;
+                        cmd.Parameters.Add("@UserCode", SqlDbType.NVarChar, 50).Value = userCode;
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        da.Fill(ds);
+                    }
+                }
+
+                OjbRes.Response.Add(new Response { ResponseCode = "200" });
+
+                if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+                {
+                    int totalCandidateScore = 0; int totalMaxScore = 0; int totalTimeGiven = 0; int totalTimeRemain = 0;
+
+                    foreach (DataRow row in ds.Tables[0].Rows)
+                    {
+                        //Canditate Score
+                        CandidateScoreRes objScr = new CandidateScoreRes();
+                        objScr.Module = row["ModuleName"].ToString();
+                        objScr.TimeTaken_MaxTime = $"{row["TimeGiven"]}/{row["TimeRemain"]}"; // adjust if needed
+                        objScr.CandidateScore = row["TotalQtnsCorrectlyAnswered"].ToString();
+                        objScr.MaxScore = row["TotalQtns"].ToString();
+                        objScr.Percentage = row["Percentage"].ToString();
+                        OjbRes.CandidateScore.Add(objScr);
+
+                        // Aggregate totals
+                        totalCandidateScore += Convert.ToInt32(row["TotalQtnsCorrectlyAnswered"]);
+                        totalMaxScore += Convert.ToInt32(row["TotalQtns"]);
+                        totalTimeGiven += Convert.ToInt32(row["TimeGiven"]);
+                        totalTimeRemain += Convert.ToInt32(row["TimeRemain"]);
+
+                        TotalScore objTotal = new TotalScore
+                        {
+                            TotalCandidateScore = totalCandidateScore.ToString(),
+                            TotalMaxScore = totalMaxScore.ToString(),
+                            TotalPercentage = totalMaxScore > 0 ? ((totalCandidateScore * 100) / totalMaxScore).ToString() : "0",
+                            GrantTotalTime = $"{totalTimeGiven}/{totalTimeRemain} min",
+                            GrantTotalTimePercentage = totalTimeGiven + totalTimeRemain > 0 ? ((totalTimeGiven * 100) / (totalTimeGiven + totalTimeRemain)).ToString() : "0"
+                        };
+
+                        OjbRes.TotalScore.Add(objTotal);
+                    }
+                }
+                else
+                {
+                    // Optionally, handle "no results" scenario
+                }
+
+            }
+            catch (SqlException ex)
+            {
+                throw new Exception("Database error while fetching candidate result.", ex);
+            }
+
+            return OjbRes;
+        } 
+    }
 }

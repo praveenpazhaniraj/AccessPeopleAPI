@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using System;
 using System.Collections.Generic;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 using YourProject.Services;
@@ -96,6 +97,47 @@ namespace AccessPeople.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
+
+
+        //[HttpPost("GetCandidateResult")]
+        //public async Task<IActionResult> GetCandidateResult([FromBody] CandidateResultReqCls request)
+        //{
+        //    // Validate authorization header
+        //    var authHeader = Request.Headers["Authorization"].ToString();
+        //    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+        //    {
+        //        return Unauthorized(new { error = "Missing or invalid Authorization header" }); 
+        //    }
+
+        //    string token = authHeader.Substring("Bearer ".Length).Trim();
+
+        //    // Validate request body
+        //    if (request == null || string.IsNullOrEmpty(request.UserCode))
+        //    {
+        //        return BadRequest(new { message = "UserCode is required" }); 
+        //    }
+
+        //    try
+        //    {
+        //        // Call service method (your token validation should happen inside GetCandidateResultAsync)
+        //        var response = await obj.GetCandidateResultAsync(token, request.UserCode);
+
+        //        if (response == null)
+        //            return NotFound(new { error = "No results found for this UserCode" });
+
+        //        // Return proper JSON  
+        //        return Ok(response);
+        //    }
+        //    catch (UnauthorizedAccessException ex)
+        //    {
+        //        return Unauthorized(new { error = ex.Message });
+        //    } 
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { error = ex.Message });
+        //    }
+        //}
+
 
 
         [HttpPost("Webhook")]

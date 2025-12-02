@@ -38,14 +38,16 @@ namespace YourProject.Services
             {
                 objRes.access_token = "";
                 objRes.expires_in = 0;
-                objRes.error = "Invalid client_id or client_secret"; 
+                objRes.error = "Invalid client_id or client_secret";
+                return objRes;
             }
 
             // If existing token is valid, return it
             if (!string.IsNullOrEmpty(Token) && DateTime.Now < TokenExpiry)
             {
                 objRes.access_token = Token;
-                objRes.expires_in = (int)(TokenExpiry - DateTime.Now).TotalSeconds; 
+                objRes.expires_in = (int)(TokenExpiry - DateTime.Now).TotalSeconds;
+                return objRes;
             }
 
             // Generate new token
@@ -92,6 +94,16 @@ namespace YourProject.Services
             {
                 UserTable = users
             };
+        }
+
+        public async Task<CandidateResultResCls> GetCandidateResultAsync(string token, string userCode)
+        {
+            if (!IsValidToken(token))
+                throw new UnauthorizedAccessException("Invalid or expired token.");
+
+            var result = await objDB.GetCandidateResultFromDBAsync(userCode);
+
+            return result;
         }
 
         public WebhookRes WebHook()
