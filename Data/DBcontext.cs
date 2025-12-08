@@ -16,26 +16,32 @@ namespace AccessPeople.Data
         {
             connectionString = configuration.GetConnectionString("DefaultConnection");
         }
-         
+
         public async Task<List<FetchAssessmentResCls>> FetchAssessmentTestsFromDbAsync()
-        {  
+        {
             List<FetchAssessmentResCls> assessmentTests = new List<FetchAssessmentResCls>(); 
             try
             {
-                DataSet ds = new DataSet();
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
-                    string query = "SELECT Account_Name, Account_Code FROM AssessmentTestsAPI"; 
+                    //string query = "SELECT AccountName, AccountCode FROM AssessmentTestsAPI"; // PROD
+                    string query = "SELECT AccountName, AccountCode FROM ClientApiDetails"; // UAT
                     using (SqlCommand cmd = new SqlCommand(query, con))
                     {
-                        SqlDataAdapter da = new SqlDataAdapter(cmd);
-                        da.Fill(ds);
+                        con.Open();  
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (await reader.ReadAsync())  
+                            {
+                                assessmentTests.Add(new FetchAssessmentResCls
+                                {
+                                    Account_Name = reader["AccountName"].ToString(),
+                                    Account_Code = reader["AccountCode"].ToString()
+                                });
+                            }
+                        }
                     }
                 }
-
-                string strjson = JsonConvert.SerializeObject(ds.Tables[0]);
-                assessmentTests = JsonConvert.DeserializeObject<List<FetchAssessmentResCls>>(strjson);
-              
             }
             catch (Exception ex)
             {
@@ -52,8 +58,9 @@ namespace AccessPeople.Data
             {
                 throw new ArgumentException("noOfUsers must be a valid positive integer.");
             } 
-
             List<GenerateAssessmentUser> users = new List<GenerateAssessmentUser>();
+            string StaticTestURL = "https://www.assesspeople.com/assessmentv6/Test";
+
             try
             {
                 DataSet ds = new DataSet();
@@ -76,6 +83,7 @@ namespace AccessPeople.Data
                 foreach (var user in users)
                 {
                     user.AccountCode = accountCode;
+                    user.TestURL = StaticTestURL;
                 }
             }
             catch (SqlException ex)

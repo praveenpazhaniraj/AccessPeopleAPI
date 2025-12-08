@@ -57,6 +57,7 @@ namespace AccessPeople.Models
             public string UserCode { get; set; }
             public string Password { get; set; }
             public string AccountCode { get; set; }
+            public string TestURL { get; set; }
         }
         #endregion
 

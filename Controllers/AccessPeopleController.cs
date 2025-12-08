@@ -84,7 +84,9 @@ namespace AccessPeople.Controllers
                 var response = await obj.GenerateAssessmentLinkAsync(token, request.Accountcode, request.NoofUsers.ToString());
 
                 if (response == null || response.UserTable.Count == 0)
-                    return BadRequest(new { error = "Failed to generate User Deatils." });
+                {
+                    return BadRequest(new { error = "Failed to generate User Deatils." }); 
+                }
 
                 return Ok(response);
             }
