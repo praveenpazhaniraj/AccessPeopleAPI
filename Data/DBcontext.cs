@@ -71,7 +71,12 @@ namespace AccessPeople.Data
                 }
 
                 string strjson = JsonConvert.SerializeObject(ds.Tables[0]);
-                users = JsonConvert.DeserializeObject<List<GenerateAssessmentUser>>(strjson); 
+                users = JsonConvert.DeserializeObject<List<GenerateAssessmentUser>>(strjson);
+
+                foreach (var user in users)
+                {
+                    user.AccountCode = accountCode;
+                }
             }
             catch (SqlException ex)
             {
