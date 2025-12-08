@@ -24,8 +24,7 @@ namespace AccessPeople.Data
             {
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
-                    //string query = "SELECT AccountName, AccountCode FROM AssessmentTestsAPI"; // PROD
-                    string query = "SELECT AccountName, AccountCode FROM ClientApiDetails"; // UAT
+                    string query = "SELECT Account_Name, Account_Code FROM AssessmentTestsAPI"; 
                     using (SqlCommand cmd = new SqlCommand(query, con))
                     {
                         con.Open();  
@@ -35,8 +34,8 @@ namespace AccessPeople.Data
                             {
                                 assessmentTests.Add(new FetchAssessmentResCls
                                 {
-                                    Account_Name = reader["AccountName"].ToString(),
-                                    Account_Code = reader["AccountCode"].ToString()
+                                    Account_Name = reader["Account_Name"].ToString(),  
+                                    Account_Code = reader["Account_Code"].ToString()  
                                 });
                             }
                         }

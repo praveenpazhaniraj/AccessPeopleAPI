@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
@@ -87,6 +88,14 @@ namespace AccessPeople.Controllers
                 {
                     return BadRequest(new { error = "Failed to generate User Deatils." }); 
                 }
+
+                // Log the contents of UserTable (ensure TestURL is there)
+                foreach (var user in response.UserTable)
+                {
+                    Console.WriteLine($"UserCode: {user.UserCode}, Password: {user.Password}, AccCode: {user.AccountCode} TestURL: {user.TestURL}");
+                }
+
+                string serializedResponse = JsonConvert.SerializeObject(response);
 
                 return Ok(response);
             }
