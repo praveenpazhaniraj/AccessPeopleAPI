@@ -88,8 +88,7 @@ namespace AccessPeople.Controllers
                 {
                     return BadRequest(new { error = "Failed to generate User Deatils." }); 
                 }
-
-                // Log the contents of UserTable (ensure TestURL is there)
+                 
                 foreach (var user in response.UserTable)
                 {
                     Console.WriteLine($"UserCode: {user.UserCode}, Password: {user.Password}, AccCode: {user.AccountCode} TestURL: {user.TestURL}");
@@ -110,51 +109,51 @@ namespace AccessPeople.Controllers
         }
 
 
-        //[HttpPost("GetCandidateResult")]
-        //public async Task<IActionResult> GetCandidateResult([FromBody] CandidateResultReqCls request)
-        //{
-        //    // Validate authorization header
-        //    var authHeader = Request.Headers["Authorization"].ToString();
-        //    if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-        //    {
-        //        return Unauthorized(new { error = "Missing or invalid Authorization header" }); 
-        //    }
+        [HttpPost("GetCandidateResult")]
+        public async Task<IActionResult> GetCandidateResult([FromBody] CandidateResultReqCls request)
+        {
+            //// Validate authorization header
+            //var authHeader = Request.Headers["Authorization"].ToString();
+            //if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            //{
+            //    return Unauthorized(new { error = "Missing or invalid Authorization header" });
+            //}
 
-        //    string token = authHeader.Substring("Bearer ".Length).Trim();
+            //string token = authHeader.Substring("Bearer ".Length).Trim();
+             
+            if (request == null || string.IsNullOrEmpty(request.UserCode))
+            {
+                return BadRequest(new { message = "UserCode is required" });
+            }
 
-        //    // Validate request body
-        //    if (request == null || string.IsNullOrEmpty(request.UserCode))
-        //    {
-        //        return BadRequest(new { message = "UserCode is required" }); 
-        //    }
+            try
+            {
+                // Call service method (your token validation should happen inside GetCandidateResultAsync)
+                //var response = obj.GetCandidateResult(request.UserCode);//token
+                var response = await obj.GetCandidateResultAsync(request.UserCode);//token
 
-        //    try
-        //    {
-        //        // Call service method (your token validation should happen inside GetCandidateResultAsync)
-        //        var response = await obj.GetCandidateResultAsync(token, request.UserCode);
-
-        //        if (response == null)
-        //            return NotFound(new { error = "No results found for this UserCode" });
-
-        //        // Return proper JSON  
-        //        return Ok(response);
-        //    }
-        //    catch (UnauthorizedAccessException ex)
-        //    {
-        //        return Unauthorized(new { error = ex.Message });
-        //    } 
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, new { error = ex.Message });
-        //    }
-        //}
+                if (response == null)
+                {
+                    return NotFound(new { error = "No results found for this UserCode" }); 
+                } 
+                return Ok(response);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
 
 
 
         [HttpPost("Webhook")]
-        public IActionResult Webhook()
+        public IActionResult Webhook(string userCode)
         {
-            var response = obj.WebHook();
+            var response = obj.WebHook(userCode);
             if (string.IsNullOrEmpty(response.ToString()))
             {
                 return BadRequest("Failed to retrieve Webhook."); 

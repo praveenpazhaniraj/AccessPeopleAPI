@@ -1460,11 +1460,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\AccessPeople\\AccessPeople.csproj",
+      "projectUniqueName": "D:\\TurboHIre\\AccessPeople\\AccessPeople.csproj",
       "projectName": "AccessPeople",
-      "projectPath": "D:\\AccessPeople\\AccessPeople.csproj",
+      "projectPath": "D:\\TurboHIre\\AccessPeople\\AccessPeople.csproj",
       "packagesPath": "C:\\Users\\pazhani\\.nuget\\packages\\",
-      "outputPath": "D:\\AccessPeople\\obj\\",
+      "outputPath": "D:\\TurboHIre\\AccessPeople\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\pazhani\\AppData\\Roaming\\NuGet\\NuGet.Config",

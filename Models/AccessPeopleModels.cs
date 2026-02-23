@@ -98,13 +98,16 @@ namespace AccessPeople.Models
         #region "WebHook"
         public class WebhookReq
         {
+            public string CandidateAssessmentStartTime { get; set; }
+            public string CandidateAssessmentEndTime { get; set; }
+            public string Metadata { get; set; }
+            public int Total { get; set; }
+            public int Score { get; set; }
+            public string ReportLink { get; set; }
             public string AssessmentPartnerType { get; set; }
             public string AssessmentInviteId { get; set; }
             public string AssessmentStatus { get; set; }
-            public int Score { get; set; }
-            public int Total { get; set; }
-            public string ReportLink { get; set; }
-            public string Metadata { get; set; }
+            public string Cutoff { get; set; }
         }
 
         public class WebhookRes

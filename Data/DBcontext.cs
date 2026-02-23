@@ -44,7 +44,7 @@ namespace AccessPeople.Data
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"DB Error: {ex.Message}");
+                Console.WriteLine("DB Error:" + ex.Message);
                 throw;
             }
 
@@ -99,8 +99,14 @@ namespace AccessPeople.Data
         {
             CandidateResultResCls OjbRes = new CandidateResultResCls();
             OjbRes.CandidateScore = new List<CandidateScoreRes>();
+            CandidateScoreRes Score = new CandidateScoreRes();
+
             OjbRes.Response = new List<Response>();
+            Response res = new Response();
+            res.ResponseCode = "200";
+
             OjbRes.TotalScore = new List<TotalScore>();
+            TotalScore Tot = new TotalScore();
 
             try
             {
@@ -114,48 +120,43 @@ namespace AccessPeople.Data
                         SqlDataAdapter da = new SqlDataAdapter(cmd);
                         da.Fill(ds);
                     }
-                }
+                    OjbRes.Response.Add(res);
+                } 
+               
 
-                OjbRes.Response.Add(new Response { ResponseCode = "200" });
-
-                if (ds.Tables.Count > 0 && ds.Tables[0].Rows.Count > 0)
+                if (ds.Tables.Count > 0)
                 {
-                    int totalCandidateScore = 0; int totalMaxScore = 0; int totalTimeGiven = 0; int totalTimeRemain = 0;
-
-                    foreach (DataRow row in ds.Tables[0].Rows)
+                    if (ds.Tables[0].Rows.Count > 0)
                     {
-                        //Canditate Score
-                        CandidateScoreRes objScr = new CandidateScoreRes();
-                        objScr.Module = row["ModuleName"].ToString();
-                        objScr.TimeTaken_MaxTime = $"{row["TimeGiven"]}/{row["TimeRemain"]}"; // adjust if needed
-                        objScr.CandidateScore = row["TotalQtnsCorrectlyAnswered"].ToString();
-                        objScr.MaxScore = row["TotalQtns"].ToString();
-                        objScr.Percentage = row["Percentage"].ToString();
-                        OjbRes.CandidateScore.Add(objScr);
+                        int totalScore = 0; int totalMaxScore = 0; int TimeGiven = 0; int TimeRemain = 0;
 
-                        // Aggregate totals
-                        totalCandidateScore += Convert.ToInt32(row["TotalQtnsCorrectlyAnswered"]);
-                        totalMaxScore += Convert.ToInt32(row["TotalQtns"]);
-                        totalTimeGiven += Convert.ToInt32(row["TimeGiven"]);
-                        totalTimeRemain += Convert.ToInt32(row["TimeRemain"]);
-
-                        TotalScore objTotal = new TotalScore
+                        foreach (DataRow dr in ds.Tables[0].Rows)
                         {
-                            TotalCandidateScore = totalCandidateScore.ToString(),
-                            TotalMaxScore = totalMaxScore.ToString(),
-                            TotalPercentage = totalMaxScore > 0 ? ((totalCandidateScore * 100) / totalMaxScore).ToString() : "0",
-                            GrantTotalTime = $"{totalTimeGiven}/{totalTimeRemain} min",
-                            GrantTotalTimePercentage = totalTimeGiven + totalTimeRemain > 0 ? ((totalTimeGiven * 100) / (totalTimeGiven + totalTimeRemain)).ToString() : "0"
-                        };
+                            //Canditate Score
+                            Score = new CandidateScoreRes();
+                            Score.Module = dr["ModuleName"].ToString();
+                            Score.TimeTaken_MaxTime = $"{dr["TimeGiven"]}/{dr["TimeRemain"]}";
+                            Score.CandidateScore = dr["TotalQtnsCorrectlyAnswered"].ToString();
+                            Score.MaxScore = dr["TotalQtns"].ToString();
+                            Score.Percentage = dr["Percentage"].ToString();
+                            OjbRes.CandidateScore.Add(Score);
 
-                        OjbRes.TotalScore.Add(objTotal);
+                            totalScore += Convert.ToInt32(dr["TotalQtnsCorrectlyAnswered"]);
+                            totalMaxScore += Convert.ToInt32(dr["TotalQtns"]);
+                            TimeGiven += Convert.ToInt32(dr["TimeGiven"]);
+                            TimeRemain += Convert.ToInt32(dr["TimeRemain"]);
+
+                            Tot = new TotalScore();
+                            Tot.TotalCandidateScore = totalScore.ToString();
+                            Tot.TotalMaxScore = totalMaxScore.ToString();
+                            Tot.TotalPercentage = ((totalScore * 100) / totalMaxScore).ToString();
+                            Tot.GrantTotalTime = TimeGiven / TimeRemain + "min";
+                            Tot.GrantTotalTimePercentage = ((TimeGiven * 100) / (TimeGiven + TimeRemain)).ToString();
+
+                            OjbRes.TotalScore.Add(Tot);
+                        }
                     }
                 }
-                else
-                {
-                    // Optionally, handle "no results" scenario
-                }
-
             }
             catch (SqlException ex)
             {
@@ -164,5 +165,6 @@ namespace AccessPeople.Data
 
             return OjbRes;
         } 
+         
     }
 }

@@ -96,41 +96,66 @@ namespace YourProject.Services
             };
         }
 
-        public async Task<CandidateResultResCls> GetCandidateResultAsync(string token, string userCode)
+        //public  CandidateResultResCls  GetCandidateResult(string userCode) 
+        //{
+        //    CandidateResultResCls ObjRes = new CandidateResultResCls();
+        //    string url = "https://www.assesspeople.com/RestServiceSG/getCandidateScore";
+
+        //    CandidateResultReqCls  Objreq = new CandidateResultReqCls();
+        //    Objreq.UserCode = userCode;
+
+        //    string jsonBody = JsonConvert.SerializeObject(Objreq); 
+        //    var apiResult = ApiCall(url, "POST", "", jsonBody);
+        //    ObjRes = JsonConvert.DeserializeObject<CandidateResultResCls>(apiResult.Response);
+        //    if (!apiResult.IsSuccess)
+        //    {
+        //        Console.WriteLine($"Failed to Send WebHook: {apiResult.ErrorMessage}"); 
+        //    }
+
+        //    return ObjRes;
+        //}  
+
+
+
+        public async Task<CandidateResultResCls> GetCandidateResultAsync(string userCode)//string token
         {
-            if (!IsValidToken(token))
-                throw new UnauthorizedAccessException("Invalid or expired token.");
+            //if (!IsValidToken(token))
+            //    throw new UnauthorizedAccessException("Invalid or expired token.");
 
             var result = await objDB.GetCandidateResultFromDBAsync(userCode);
-
-            return result;
+            return result; 
         }
 
-        public WebhookRes WebHook()
-        { 
+        public async Task<WebhookRes> WebHook(string userCode)
+        {
+            //Here We getting candidate result from DB
+            var candidateResult = await objDB.GetCandidateResultFromDBAsync(userCode);  
+
             string url = "https://api.turbohire.co/api/assessments/result";
-            var requestBody = new
-            {
-                AssessmentPartnerType = "AssessPeople",
-                AssessmentInviteId = "",
-                AssessmentStatus = "ongiong",
-                Score = 0,
-                Total = 0,
-                ReportLink = "",
-                Metadata = "",
-            };
-            string jsonBody = JsonConvert.SerializeObject(requestBody);
+            WebhookReq ObjReq = new WebhookReq();
+            ObjReq.CandidateAssessmentStartTime = "";
+            ObjReq.CandidateAssessmentEndTime = "";
+            ObjReq.Metadata = JsonConvert.SerializeObject(candidateResult); //Pass DB result into Metadata
+            ObjReq.Total = Convert.ToInt32(candidateResult.TotalScore);
+            ObjReq.Score = Convert.ToInt32(candidateResult.CandidateScore);
+            ObjReq.ReportLink = "";
+            ObjReq.AssessmentPartnerType = "AccessPeople";
+            ObjReq.AssessmentStatus = "Complete";
+            ObjReq.AssessmentInviteId = userCode;
+            ObjReq.Cutoff = "";
+
+            string jsonBody = JsonConvert.SerializeObject(ObjReq);
             var apiResult = ApiCall(url, "POST", "", jsonBody);
             if (!apiResult.IsSuccess)
             {
-                Console.WriteLine($"Failed to Send WebHook: {apiResult.ErrorMessage}");
+                Console.WriteLine("Failed to Send WebHook:" + apiResult.ErrorMessage);
                 return null;
             }
-            var WebhookRes = JsonConvert.DeserializeObject<WebhookRes>(apiResult.Response);  
+            var WebhookRes = JsonConvert.DeserializeObject<WebhookRes>(apiResult.Response);
             return WebhookRes;
         }
 
-        public ApiResult ApiCall(string url, string method, string accessToken = "", string jsonBody = "")
+        public ApiResult ApiCall(string url, string method, string accessToken, string jsonBody)
         {
             ApiResult result = new ApiResult();
             HttpWebResponse response = null;
@@ -187,13 +212,13 @@ namespace YourProject.Services
                 }
 
                 result.IsSuccess = false;
-                Console.WriteLine($"[ApiCall] WebException: {ex.Message}");
+                Console.WriteLine("WebException:" + ex.Message);
             }
             catch (Exception ex)
             {
                 result.IsSuccess = false;
                 result.ErrorMessage = ex.Message;
-                Console.WriteLine($"[ApiCall] General Exception: {ex.Message}");
+                Console.WriteLine("GeneralException:" + ex.Message);
             }
             finally
             {
