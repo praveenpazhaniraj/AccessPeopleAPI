@@ -88,40 +88,16 @@ namespace YourProject.Services
                 throw new UnauthorizedAccessException("Invalid or expired token."); 
             }
 
-            var users = await objDB.GenerateUserIdsWithPasswordsAsync(accountCode, noOfUsers);
+            var users = await objDB.GenerateUserIdsWithPasswordsAsync(accountCode, noOfUsers); 
 
             return new GenerateAssessmentLinkResCls
             {
                 UserTable = users
             };
         }
-
-        //public  CandidateResultResCls  GetCandidateResult(string userCode) 
-        //{
-        //    CandidateResultResCls ObjRes = new CandidateResultResCls();
-        //    string url = "https://www.assesspeople.com/RestServiceSG/getCandidateScore";
-
-        //    CandidateResultReqCls  Objreq = new CandidateResultReqCls();
-        //    Objreq.UserCode = userCode;
-
-        //    string jsonBody = JsonConvert.SerializeObject(Objreq); 
-        //    var apiResult = ApiCall(url, "POST", "", jsonBody);
-        //    ObjRes = JsonConvert.DeserializeObject<CandidateResultResCls>(apiResult.Response);
-        //    if (!apiResult.IsSuccess)
-        //    {
-        //        Console.WriteLine($"Failed to Send WebHook: {apiResult.ErrorMessage}"); 
-        //    }
-
-        //    return ObjRes;
-        //}  
-
-
-
-        public async Task<CandidateResultResCls> GetCandidateResultAsync(string userCode)//string token
+         
+        public async Task<CandidateResultResCls> GetCandidateResultAsync(string userCode)
         {
-            //if (!IsValidToken(token))
-            //    throw new UnauthorizedAccessException("Invalid or expired token.");
-
             var result = await objDB.GetCandidateResultFromDBAsync(userCode);
             return result; 
         }
@@ -129,36 +105,40 @@ namespace YourProject.Services
         public async Task<WebhookRes> WebHook(string userCode)
         {
             //Here We getting candidate result from DB
-            var candidateResult = await objDB.GetCandidateResultFromDBAsync(userCode);  
+            var candidateResult = await objDB.GetCandidateResultFromDBAsync(userCode);
 
-            string url = "https://api.turbohire.co/api/assessments/result";
-            WebhookReq ObjReq = new WebhookReq();
-            ObjReq.CandidateAssessmentStartTime = "";
-            ObjReq.CandidateAssessmentEndTime = "";
-            ObjReq.Metadata = JsonConvert.SerializeObject(candidateResult); //Pass DB result into Metadata
-            ObjReq.Total = Convert.ToInt32(candidateResult.TotalScore);
-            ObjReq.Score = Convert.ToInt32(candidateResult.CandidateScore);
-            ObjReq.ReportLink = "";
-            ObjReq.AssessmentPartnerType = "AccessPeople";
-            ObjReq.AssessmentStatus = "Complete";
-            ObjReq.AssessmentInviteId = userCode;
-            ObjReq.Cutoff = "";
-
-            string jsonBody = JsonConvert.SerializeObject(ObjReq);
-            var apiResult = ApiCall(url, "POST", "", jsonBody);
-            if (!apiResult.IsSuccess)
+            // If test not completed → DO NOT send webhook
+            if (candidateResult.Response == null ||candidateResult.Response.Count == 0 ||candidateResult.Response[0].ResponseCode != "1")
             {
-                Console.WriteLine("Failed to Send WebHook:" + apiResult.ErrorMessage);
-                return null;
+                Console.WriteLine("Webhook not triggered - Test not yet started or not completed");
+            } 
+
+            WebhookReq ObjReq = new WebhookReq(); 
+            ObjReq.Metadata = JsonConvert.SerializeObject(candidateResult); //Pass DB result into Metadata
+            foreach (var score in candidateResult.CandidateScore)
+            { 
+                ObjReq.Score = Convert.ToInt32(score.CandidateScore);
+                ObjReq.Total = Convert.ToInt32(score.MaxScore);
             }
-            var WebhookRes = JsonConvert.DeserializeObject<WebhookRes>(apiResult.Response);
+            ObjReq.ReportLink = "http://WWW.ASSESSPEOPLE.COM/assessmentv6/admin/SAINTGOBAINREPORTS.ASP?UserCode=SGFN004073&DCode=Current";
+            ObjReq.AssessmentPartnerType = "AccessPeople";
+            ObjReq.AssessmentStatus = candidateResult.Response[0].ResponseCode;
+            ObjReq.AssessmentInviteId = userCode; 
+
+            string postData = JsonConvert.SerializeObject(ObjReq);
+            string url = "https://api.turbohire.co/api/assessments/result";
+            var apiResult = ApiCall(url, "POST", postData);
+            if (apiResult != null)
+            {
+                Console.WriteLine("Failed to Send WebHook");
+            }
+            var WebhookRes = JsonConvert.DeserializeObject<WebhookRes>(apiResult);
             return WebhookRes;
         }
 
-        public ApiResult ApiCall(string url, string method, string accessToken, string jsonBody)
+        private string ApiCall(string url, string method, string postData)
         {
-            ApiResult result = new ApiResult();
-            HttpWebResponse response = null;
+            string responseFromServer = "";
             try
             {
                 ServicePointManager.Expect100Continue = true;
@@ -167,65 +147,37 @@ namespace YourProject.Services
                 HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(url);
                 webRequest.Method = method.ToUpper();
                 webRequest.Accept = "application/json";
-                webRequest.Timeout = 30000; // 30 seconds timeout
-
-                if (!string.IsNullOrEmpty(accessToken))
+                webRequest.ContentType = "application/json";
+                if (string.IsNullOrEmpty(postData))
                 {
-                    webRequest.Headers["Authorization"] = "Bearer " + accessToken;
-                }
-
-                if (method.ToUpper() == "POST")
-                {
-                    webRequest.ContentType = "application/json";
-                    if (!string.IsNullOrEmpty(jsonBody))
+                    StreamWriter requestWriter = new StreamWriter(webRequest.GetRequestStream());
+                    requestWriter.Write(postData);
+                    requestWriter.Close();
+                    using (HttpWebResponse response = (HttpWebResponse)webRequest.GetResponse())
                     {
-                        using (var streamWriter = new StreamWriter(webRequest.GetRequestStream()))
-                        {
-                            streamWriter.Write(jsonBody);
-                        }
+                        StreamReader responseReader = new StreamReader(response.GetResponseStream());
+                        responseFromServer = responseReader.ReadToEnd();
+                        responseReader.Close();
                     }
                 }
-
-                response = (HttpWebResponse)webRequest.GetResponse();
-                result.StatusCode = response.StatusCode;
-                using (StreamReader reader = new StreamReader(response.GetResponseStream()))
-                {
-                    result.Response = reader.ReadToEnd();
-                }
-
-                result.IsSuccess = (response.StatusCode == HttpStatusCode.OK);
             }
-            catch (WebException ex)
+            catch (System.Net.WebException e)
             {
-                // This catches both network errors and non-200 responses
-                if (ex.Response is HttpWebResponse errorResponse)
+                var response = (HttpWebResponse)e.Response;
+                if (response != null)
                 {
-                    result.StatusCode = errorResponse.StatusCode;
-                    using (var reader = new StreamReader(errorResponse.GetResponseStream()))
+                    using (StreamReader rd = new StreamReader(response.GetResponseStream()))
                     {
-                        result.ErrorMessage = reader.ReadToEnd();
+                        responseFromServer = rd.ReadToEnd();
                     }
                 }
-                else
+                if (responseFromServer == "")
                 {
-                    result.ErrorMessage = ex.Message;
+                    responseFromServer = e.Message;
                 }
+            }  
 
-                result.IsSuccess = false;
-                Console.WriteLine("WebException:" + ex.Message);
-            }
-            catch (Exception ex)
-            {
-                result.IsSuccess = false;
-                result.ErrorMessage = ex.Message;
-                Console.WriteLine("GeneralException:" + ex.Message);
-            }
-            finally
-            {
-                response?.Close();
-            }
-
-            return result;
+            return responseFromServer;
         }
     }
 }

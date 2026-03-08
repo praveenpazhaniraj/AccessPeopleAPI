@@ -7,13 +7,6 @@ namespace AccessPeople.Models
 {
     public class AccessPeopleModels
     {
-        public class ApiResult
-        {
-            public bool IsSuccess { get; set; }
-            public string Response { get; set; }
-            public string ErrorMessage { get; set; }
-            public System.Net.HttpStatusCode StatusCode { get; set; }
-        }
 
         #region "Authentication"
         public class AuthenticationResCls
@@ -98,8 +91,8 @@ namespace AccessPeople.Models
         #region "WebHook"
         public class WebhookReq
         {
-            public string CandidateAssessmentStartTime { get; set; }
-            public string CandidateAssessmentEndTime { get; set; }
+            //public string CandidateAssessmentStartTime { get; set; }
+            //public string CandidateAssessmentEndTime { get; set; }
             public string Metadata { get; set; }
             public int Total { get; set; }
             public int Score { get; set; }
@@ -107,7 +100,7 @@ namespace AccessPeople.Models
             public string AssessmentPartnerType { get; set; }
             public string AssessmentInviteId { get; set; }
             public string AssessmentStatus { get; set; }
-            public string Cutoff { get; set; }
+           // public string Cutoff { get; set; }
         }
 
         public class WebhookRes

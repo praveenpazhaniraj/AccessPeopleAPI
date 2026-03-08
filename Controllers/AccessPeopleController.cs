@@ -110,31 +110,18 @@ namespace AccessPeople.Controllers
 
 
         [HttpPost("GetCandidateResult")]
-        public async Task<IActionResult> GetCandidateResult([FromBody] CandidateResultReqCls request)
+        public IActionResult GetCandidateResult([FromBody] CandidateResultReqCls req)
         {
-            //// Validate authorization header
-            //var authHeader = Request.Headers["Authorization"].ToString();
-            //if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
-            //{
-            //    return Unauthorized(new { error = "Missing or invalid Authorization header" });
-            //}
-
-            //string token = authHeader.Substring("Bearer ".Length).Trim();
-             
-            if (request == null || string.IsNullOrEmpty(request.UserCode))
+            if (req == null || string.IsNullOrEmpty(req.UserCode))
             {
                 return BadRequest(new { message = "UserCode is required" });
             }
-
             try
             {
-                // Call service method (your token validation should happen inside GetCandidateResultAsync)
-                //var response = obj.GetCandidateResult(request.UserCode);//token
-                var response = await obj.GetCandidateResultAsync(request.UserCode);//token
-
+                var response =  obj.GetCandidateResultAsync(req.UserCode);
                 if (response == null)
                 {
-                    return NotFound(new { error = "No results found for this UserCode" }); 
+                    return NotFound(new { error = "No results found for this UserCode" });
                 } 
                 return Ok(response);
             }
@@ -147,8 +134,6 @@ namespace AccessPeople.Controllers
                 return StatusCode(500, new { error = ex.Message });
             }
         }
-
-
 
         [HttpPost("Webhook")]
         public IActionResult Webhook(string userCode)
