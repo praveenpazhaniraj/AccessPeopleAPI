@@ -136,13 +136,15 @@ namespace AccessPeople.Controllers
         }
 
         [HttpPost("Webhook")]
-        public IActionResult Webhook(string userCode)
+        public async Task<IActionResult> Webhook(string userCode)
         {
-            var response = obj.WebHook(userCode);
-            if (string.IsNullOrEmpty(response.ToString()))
+            var response = await obj.WebHook(userCode);
+
+            if (response == null)
             {
-                return BadRequest("Failed to retrieve Webhook."); 
+                return BadRequest("Webhook failed.");
             }
+
             return Ok(response);
         }
     }

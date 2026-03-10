@@ -117,7 +117,7 @@ namespace AccessPeople.Data
                 if (ds.Tables.Count > 0)
                 {
                     if (ds.Tables[0].Rows.Count > 0)
-                    {
+                    { 
                         int totalScore = 0;int totalMaxScore = 0;int totalTimeGiven = 0;int totalTimeRemain = 0; int totalTimeTaken = 0; int timeGiven = 0; int timeRemain = 0; int candidateScore = 0;int maxScore = 0;
                          
                         foreach (DataRow dr in ds.Tables[0].Rows)
@@ -140,11 +140,12 @@ namespace AccessPeople.Data
                             timeRemain = Convert.ToInt32(dr["TimeRemain"]);
                             Score.TimeTaken_MaxTime = (timeGiven - timeRemain).ToString();
 
-                            candidateScore = Convert.ToInt32(dr["TotalQtnsCorrectlyAnswered"]);
-                            maxScore = Convert.ToInt32(dr["TotalQtns"]);
+                            candidateScore = dr["TotalQtnsCorrectlyAnswered"] == DBNull.Value? 0 : Convert.ToInt32(dr["TotalQtnsCorrectlyAnswered"]);
+                            maxScore = dr["TotalQtns"] == DBNull.Value? 0 : Convert.ToInt32(dr["TotalQtns"]);
+
                             Score.CandidateScore = candidateScore.ToString();
                             Score.MaxScore = maxScore.ToString();
-                            Score.Percentage = dr["Percentage"].ToString();
+                            Score.Percentage = dr["Percentage"] == DBNull.Value? "0": dr["Percentage"].ToString();
                             OjbRes.CandidateScore.Add(Score);
 
                             totalScore += candidateScore;

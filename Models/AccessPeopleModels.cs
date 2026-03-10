@@ -87,20 +87,35 @@ namespace AccessPeople.Models
             public string GrantTotalTimePercentage { get; set; }
         }
         #endregion
-         
+
         #region "WebHook"
         public class WebhookReq
         {
-            //public string CandidateAssessmentStartTime { get; set; }
-            //public string CandidateAssessmentEndTime { get; set; }
-            public string Metadata { get; set; }
+            public Metadata Metadata { get; set; }
             public int Total { get; set; }
             public int Score { get; set; }
             public string ReportLink { get; set; }
             public string AssessmentPartnerType { get; set; }
             public string AssessmentInviteId { get; set; }
             public string AssessmentStatus { get; set; }
-           // public string Cutoff { get; set; }
+        }
+
+        public class Metadata
+        {
+            public TestModules TestModules { get; set; }
+        }
+
+        public class TestModules
+        {
+            public int Count { get; set; }
+            public List<Scores> Scores { get; set; }
+        }
+
+        public class Scores
+        {
+            public string ScoreName { get; set; }
+            public int ScoreValue { get; set; }
+            public int MaxScore { get; set; }
         }
 
         public class WebhookRes
@@ -110,7 +125,6 @@ namespace AccessPeople.Models
             public string MoreInfo { get; set; }
             public string ErrorCode { get; set; }
         }
-        #endregion 
-
+        #endregion  
     } 
 }
