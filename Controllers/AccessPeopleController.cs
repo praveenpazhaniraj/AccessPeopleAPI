@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
@@ -110,7 +111,7 @@ namespace AccessPeople.Controllers
 
 
         [HttpPost("GetCandidateResult")]
-        public IActionResult GetCandidateResult([FromBody] CandidateResultReqCls req)
+        public async Task<IActionResult> GetCandidateResult([FromBody] CandidateResultReqCls req)
         {
             if (req == null || string.IsNullOrEmpty(req.UserCode))
             {
@@ -118,7 +119,7 @@ namespace AccessPeople.Controllers
             }
             try
             {
-                var response =  obj.GetCandidateResultAsync(req.UserCode);
+                var response = await obj.GetCandidateResultAsync(req.UserCode);
                 if (response == null)
                 {
                     return NotFound(new { error = "No results found for this UserCode" });
@@ -135,6 +136,7 @@ namespace AccessPeople.Controllers
             }
         }
 
+
         [HttpPost("Webhook")]
         public async Task<IActionResult> Webhook(string userCode)
         {
@@ -147,6 +149,35 @@ namespace AccessPeople.Controllers
 
             return Ok(response);
         }
+
+        //[HttpPost("Webhook")]
+        //public async Task<IActionResult> Webhook([FromBody] WebhookReq req)
+        //{
+        //    if (req == null || string.IsNullOrEmpty(req.AssessmentInviteId))
+        //    {
+        //        return BadRequest(new { message = "Invalid Request" });
+        //    } 
+        //    try
+        //    { 
+        //        string userCode = req.AssessmentInviteId; 
+        //        var response = await obj.WebHook(userCode);
+
+        //        if (response == null)
+        //        {
+        //            return NotFound(new { error = "No results found for this UserCode" });
+        //        }
+
+        //        return Ok(response);
+        //    }
+        //    catch (UnauthorizedAccessException ex)
+        //    {
+        //        return Unauthorized(new { error = ex.Message });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { error = ex.Message });
+        //    }
+        //}
     }
 
 }

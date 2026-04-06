@@ -91,7 +91,7 @@ namespace AccessPeople.Models
         #region "WebHook"
         public class WebhookReq
         {
-            public Metadata Metadata { get; set; }
+            public string Metadata { get; set; }
             public int Total { get; set; }
             public int Score { get; set; }
             public string ReportLink { get; set; }
@@ -102,21 +102,14 @@ namespace AccessPeople.Models
 
         public class Metadata
         {
-            public TestModules TestModules { get; set; }
+            public TestModule testModule { get; set; }
         }
 
-        public class TestModules
+        public class TestModule
         {
-            public int Count { get; set; }
-            public List<Scores> Scores { get; set; }
-        }
-
-        public class Scores
-        {
-            public string ScoreName { get; set; }
-            public int ScoreValue { get; set; }
-            public int MaxScore { get; set; }
-        }
+            public int count { get; set; }
+            public List<Dictionary<string, object>> scores { get; set; }
+        } 
 
         public class WebhookRes
         {

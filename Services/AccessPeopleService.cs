@@ -151,36 +151,47 @@ namespace YourProject.Services
                     Res.Message = "Test not completed";
                     Res.MoreInfo = "Webhook not triggered because candidate test is not finished.";
                     Res.ErrorCode = "TEST_NOT_COMPLETED";
-                    return Res; 
-                } 
-
-                WebhookReq ObjReq = new WebhookReq();
-                Metadata meta = new Metadata();
-                meta.TestModules = new TestModules();
-                meta.TestModules.Scores = new List<Scores>();
-
-                int totalScore = 0;int totalMax = 0;
-                foreach (var score in candidateResult.CandidateScore)
-                {
-                    Scores sc = new Scores();
-                    sc.ScoreName = score.Module;
-                    sc.ScoreValue = Convert.ToInt32(score.CandidateScore);
-                    sc.MaxScore = Convert.ToInt32(score.MaxScore);
-                    meta.TestModules.Scores.Add(sc);
-
-                    totalScore += sc.ScoreValue;
-                    totalMax += sc.MaxScore;
+                    return Res;
                 }
 
-                meta.TestModules.Count = meta.TestModules.Scores.Count;
-                ObjReq.Metadata = meta;
+                WebhookReq ObjReq = new WebhookReq();
+
+                Metadata meta = new Metadata();
+                meta.testModule = new TestModule();
+                meta.testModule.scores = new List<Dictionary<string, object>>();
+
+                int index = 1;
+                int totalScore = 0;
+                int totalMax = 0;
+
+                foreach (var score in candidateResult.CandidateScore)
+                {
+                    var scoreDict = new Dictionary<string, object>();
+
+                    scoreDict.Add($"Score{index}Value", Convert.ToInt32(score.CandidateScore));
+                    scoreDict.Add($"Score{index}Label", score.Module);
+
+                    meta.testModule.scores.Add(scoreDict);
+
+                    totalScore += Convert.ToInt32(score.CandidateScore);
+                    totalMax += Convert.ToInt32(score.MaxScore);
+
+                    index++;
+                }
+
+                meta.testModule.count = meta.testModule.scores.Count;
+                 
+                ObjReq.Metadata = JsonConvert.SerializeObject(meta);
+
                 ObjReq.Score = totalScore;
                 ObjReq.Total = totalMax;
-                ObjReq.ReportLink ="http://WWW.ASSESSPEOPLE.COM/assessmentv6/admin/SAINTGOBAINREPORTS.ASP?UserCode="+ userCode + "&DCode=Current";
-                ObjReq.AssessmentPartnerType = "AccessPeople";
+                ObjReq.ReportLink = "http://WWW.ASSESSPEOPLE.COM/assessmentv6/admin/SAINTGOBAINREPORTS.ASP?UserCode=" + userCode + "&DCode=Current";
+                ObjReq.AssessmentPartnerType = "Assesspeople";
                 ObjReq.AssessmentStatus = candidateResult.Response[0].ResponseCode;
                 ObjReq.AssessmentInviteId = userCode;
+
                 string postData = JsonConvert.SerializeObject(ObjReq);
+
                 string url = "https://api.turbohire.co/api/assessments/result";
 
                 var apiResult = ApiCall(url, "POST", postData);
@@ -248,5 +259,8 @@ namespace YourProject.Services
             }
             return responseFromServer;
         }
+
+         
+
     }
 }

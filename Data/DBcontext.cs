@@ -6,6 +6,8 @@ using System.Data.SqlClient;
 using System.Threading.Tasks;
 using static AccessPeople.Models.AccessPeopleModels;
 using Newtonsoft.Json;
+using System.Linq;
+
 namespace AccessPeople.Data
 {
     public class DBcontext
@@ -24,7 +26,7 @@ namespace AccessPeople.Data
             {
                 using (SqlConnection con = new SqlConnection(connectionString))
                 {
-                    string query = "SELECT Account_Name, Account_Code FROM AssessmentTestsAPI"; 
+                    string query = "SELECT AccountName, AccountCode FROM AssessmentTestsAPI"; 
                     using (SqlCommand cmd = new SqlCommand(query, con))
                     {
                         con.Open();  
@@ -34,8 +36,8 @@ namespace AccessPeople.Data
                             {
                                 assessmentTests.Add(new FetchAssessmentResCls
                                 {
-                                    Account_Name = reader["Account_Name"].ToString(),  
-                                    Account_Code = reader["Account_Code"].ToString()  
+                                    Account_Name = reader["AccountName"].ToString(),  
+                                    Account_Code = reader["AccountCode"].ToString()  
                                 });
                             }
                         }
@@ -93,7 +95,7 @@ namespace AccessPeople.Data
             return users;
              
         }
-
+         
         public async Task<CandidateResultResCls> GetCandidateResultFromDBAsync(string userCode)
         {
             CandidateResultResCls OjbRes = new CandidateResultResCls();
@@ -110,60 +112,84 @@ namespace AccessPeople.Data
                     {
                         cmd.CommandType = CommandType.StoredProcedure;
                         cmd.Parameters.Add("@UserCode", SqlDbType.NVarChar, 50).Value = userCode;
-                        SqlDataAdapter da = new SqlDataAdapter(cmd);
-                        da.Fill(ds);
+
+                        using (SqlDataAdapter da = new SqlDataAdapter(cmd))
+                        {
+                            await Task.Run(() => da.Fill(ds)); 
+                        }
                     }
                 }
+
+                // ✅ Check data exists
+                if (ds.Tables.Count == 0 || ds.Tables[0].Rows.Count == 0)
+                {
+                    return OjbRes;
+                }
+
                 if (ds.Tables.Count > 0)
                 {
                     if (ds.Tables[0].Rows.Count > 0)
-                    { 
-                        int totalScore = 0;int totalMaxScore = 0;int totalTimeGiven = 0;int totalTimeRemain = 0; int totalTimeTaken = 0; int timeGiven = 0; int timeRemain = 0; int candidateScore = 0;int maxScore = 0;
-                         
+                    {
+                        int totalScore = 0; int totalMaxScore = 0; int totalTimeTaken = 0;
+
                         foreach (DataRow dr in ds.Tables[0].Rows)
                         {
-                            int statusCode = Convert.ToInt32(dr["StatusCode"]);
-                            string message = dr["Message"].ToString();
+                            // ✅ Status Handling
+                            int statusCode = dr["StatusCode"] != DBNull.Value ? Convert.ToInt32(dr["StatusCode"]) : 0;
 
-                            Response res = new Response();
-                            res.ResponseCode = statusCode.ToString();
+                            Response res = new Response
+                            {
+                                ResponseCode = statusCode.ToString()
+                            };
                             OjbRes.Response.Add(res);
 
-                            if (statusCode == 0)
-                            { 
-                                Console.WriteLine(message);
+                            // ❌ If NOT completed → stop immediately
+                            if (statusCode != 4)
+                            {
+                                return OjbRes;
                             }
 
-                            CandidateScoreRes Score = new CandidateScoreRes();
-                            Score.Module = dr["ModuleName"].ToString();
-                            timeGiven = Convert.ToInt32(dr["TimeGiven"]);
-                            timeRemain = Convert.ToInt32(dr["TimeRemain"]);
-                            Score.TimeTaken_MaxTime = (timeGiven - timeRemain).ToString();
+                            // ✅ Safe column reads
+                            string module = dr.Table.Columns.Contains("ModuleName") ? dr["ModuleName"]?.ToString() : "";
+                            int timeGiven = dr.Table.Columns.Contains("TimeGiven") && dr["TimeGiven"] != DBNull.Value ? Convert.ToInt32(dr["TimeGiven"]) : 0;
+                            int timeRemain = dr.Table.Columns.Contains("TimeRemain") && dr["TimeRemain"] != DBNull.Value ? Convert.ToInt32(dr["TimeRemain"]) : 0;
+                            int candidateScore = dr.Table.Columns.Contains("TotalQtnsCorrectlyAnswered") && dr["TotalQtnsCorrectlyAnswered"] != DBNull.Value ? Convert.ToInt32(dr["TotalQtnsCorrectlyAnswered"]) : 0;
+                            int maxScore = dr.Table.Columns.Contains("TotalQtns") && dr["TotalQtns"] != DBNull.Value ? Convert.ToInt32(dr["TotalQtns"]) : 0;
+                            string percentage = dr.Table.Columns.Contains("Percentage") && dr["Percentage"] != DBNull.Value ? dr["Percentage"].ToString() : "0";
 
-                            candidateScore = dr["TotalQtnsCorrectlyAnswered"] == DBNull.Value? 0 : Convert.ToInt32(dr["TotalQtnsCorrectlyAnswered"]);
-                            maxScore = dr["TotalQtns"] == DBNull.Value? 0 : Convert.ToInt32(dr["TotalQtns"]);
+                            // ✅ Build Score Object
+                            CandidateScoreRes Score = new CandidateScoreRes
+                            {
+                                Module = module,
+                                TimeTaken_MaxTime = (timeGiven - timeRemain).ToString(),
+                                CandidateScore = candidateScore.ToString(),
+                                MaxScore = maxScore.ToString(),
+                                Percentage = percentage
+                            };
 
-                            Score.CandidateScore = candidateScore.ToString();
-                            Score.MaxScore = maxScore.ToString();
-                            Score.Percentage = dr["Percentage"] == DBNull.Value? "0": dr["Percentage"].ToString();
                             OjbRes.CandidateScore.Add(Score);
 
+                            // ✅ Totals calculation
                             totalScore += candidateScore;
                             totalMaxScore += maxScore;
-                            totalTimeGiven += timeGiven;
-                            totalTimeRemain += timeRemain;
+                            totalTimeTaken += (timeGiven - timeRemain);
 
-                            TotalScore Tot = new TotalScore();
-                            Tot.TotalCandidateScore = totalScore.ToString();
-                            Tot.TotalMaxScore = totalMaxScore.ToString();
-                            Tot.TotalPercentage = dr["Percentage"].ToString(); //((totalScore * 100) / totalMaxScore).ToString();
-                            totalTimeTaken = totalTimeGiven - totalTimeRemain;
-                            Tot.GrantTotalTime = totalTimeTaken.ToString();
-                            Tot.GrantTotalTimePercentage = ((totalTimeTaken * 100) / totalTimeGiven).ToString();
-                            OjbRes.TotalScore.Add(Tot); 
-                        } 
+                        }
+
+                        // ✅ Add ONLY ONE total record (FIXED)
+                        TotalScore Tot = new TotalScore
+                        {
+                            TotalCandidateScore = totalScore.ToString(),
+                            TotalMaxScore = totalMaxScore.ToString(),
+                            TotalPercentage = totalMaxScore == 0 ? "0" : ((totalScore * 100) / totalMaxScore).ToString(),
+                            GrantTotalTime = totalTimeTaken.ToString(),
+                            GrantTotalTimePercentage = totalTimeTaken == 0 ? "0" : ((totalTimeTaken * 100) / (totalTimeTaken == 0 ? 1 : totalTimeTaken)).ToString()
+                        };
+
+                        OjbRes.TotalScore.Add(Tot);
+
                     }
-                }
+                } 
             }
             catch (SqlException ex)
             {
@@ -172,6 +198,5 @@ namespace AccessPeople.Data
 
             return OjbRes;
         } 
-         
     }
 }
